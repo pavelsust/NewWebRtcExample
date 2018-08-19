@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothClass;
 import android.content.Context;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -176,7 +177,25 @@ public class SignallingClient {
 
 
 
+    public void sendMessage(String userID , String fromID) {
+        Log.d("JSON" , "fromID:"+fromID + " to:"+userID);
+        JSONObject jsonObject3 = new JSONObject();
+        try{
+            jsonObject3.put("category" , 3);
+            jsonObject3.put( "content","Incoming call answered.");
+            jsonObject3.put("from" , fromID);
+            jsonObject3.put("time", "");
+            jsonObject3.put("to" , userID);
+            jsonObject3.put("type" , kMessageType_Signal);
+            jsonObject3.put("subtype", kMessageSubtype_Req);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
+        Log.d("JSON_MESSAGE" , ""+jsonObject3.toString());
+        socket.emit("chat message", jsonObject3);
+
+    }
 
 
 
@@ -187,8 +206,9 @@ public class SignallingClient {
     }
 
 
-    public void init(SignalingInterface signalingInterface){
+    public void init(Context context , SignalingInterface signalingInterface){
         this.callback = signalingInterface;
+        this.context = context;
         try{
 
             SSLContext sslcontext = SSLContext.getInstance("TLS");
@@ -210,26 +230,32 @@ public class SignallingClient {
 
                     String type = jsonObject.getString("type");
                     String subType = jsonObject.getString("subtype");
+                    String to = jsonObject.getString("to");
+                    String fromID = jsonObject.getString("from");
 
                     if (type.equalsIgnoreCase(kMessageType_Signal)){
                         if (subType.equalsIgnoreCase(kMessageSubtype_Req)){
                             /**
-                             *  Request voice call
+                             *  If request call found answer the request call
                              */
-                            /////
-                        }else if (subType.equalsIgnoreCase(kMessageSubtype_Ack)){
+                            onAnswerTheRequestCall(fromID , to);
 
+                        }else if (subType.equalsIgnoreCase(kMessageSubtype_Ack)){
 
                             /**
                              *  If voice call accepted  send the offer
                              */
 
-                        }else if (subType.equalsIgnoreCase(kMessageSubtype_Offer)){
+                            callback.onTryToStart();
 
+                            /// and send the offer
+
+                        }else if (subType.equalsIgnoreCase(kMessageSubtype_Offer)){
 
                             /**
                              *  If offer found answer the offer
                              */
+                            callback.onOfferReceived(jsonObject);
 
 
                         }else if (subType.equalsIgnoreCase(kMessageSubtype_Answer)){
@@ -238,9 +264,10 @@ public class SignallingClient {
                              *  if offer received initialized the local peer
                              *
                              */
+                            callback.onAnswerReceived(jsonObject);
 
                         } else if (subType.equalsIgnoreCase(kMessageSubtype_Candidate)){
-
+                            callback.onIceCandidateReceived(jsonObject);
                         }
                     }
 
@@ -258,6 +285,32 @@ public class SignallingClient {
         }
     }
 
+    public void close() {
+        //socket.emit("bye", roomName);
+        socket.disconnect();
+        socket.close();
+    }
+
+
+
+    public void onAnswerTheRequestCall(String to  , String fromid){
+        Log.d("JSON" , "send ack");
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("category" , 3);
+            jsonObject.put("content" , "Incoming call answered.");
+            jsonObject.put("time"  , "");
+            jsonObject.put("to" ,to );
+            jsonObject.put("type", "signal");
+            jsonObject.put("status" , "1");
+            jsonObject.put("from" , fromid);
+            jsonObject.put("subtype" , kMessageSubtype_Ack);
+            socket.emit("chat message" , jsonObject);
+            Log.d("JSON" , "SEND_ACK: "+jsonObject.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 
@@ -274,10 +327,6 @@ public class SignallingClient {
 
         void onTryToStart();
 
-        void onCreatedRoom();
-
-        void onJoinedRoom();
-
-        void onNewPeerJoined();
+        void onSendTheOffer(JSONObject jsonObject);
     }
 }
