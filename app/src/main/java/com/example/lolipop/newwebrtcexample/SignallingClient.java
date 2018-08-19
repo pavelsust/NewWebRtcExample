@@ -13,8 +13,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.webrtc.IceCandidate;
+import org.webrtc.SessionDescription;
 
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -56,6 +59,9 @@ public class SignallingClient {
     private static final String kMessageSubtype_Candidate = "candidate";
     private static final String kMessageSubtype_Close = "close";
 
+    String to;
+    String fromID;
+
 
     @SuppressLint("TrustAllX509TrustManager")
     private final TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
@@ -82,8 +88,6 @@ public class SignallingClient {
 
 
 
-
-
     private Emitter.Listener onConnect = new Emitter.Listener() {
 
         JSONObject registerInfo = new JSONObject();
@@ -107,7 +111,6 @@ public class SignallingClient {
 
         }
     };
-
 
 
 
@@ -216,7 +219,8 @@ public class SignallingClient {
             IO.setDefaultHostnameVerifier((hostname, session) -> true);
             IO.setDefaultSSLContext(sslcontext);
 
-            socket = IO.socket("https://139.59.248.179:1794/");
+            //socket = IO.socket("https://139.59.248.179:1794/");
+            socket = IO.socket("http://139.59.248.179:8000/");
             socket.connect();
             socket.on(Socket.EVENT_CONNECT, onConnect);
 
@@ -230,10 +234,11 @@ public class SignallingClient {
 
                     String type = jsonObject.getString("type");
                     String subType = jsonObject.getString("subtype");
-                    String to = jsonObject.getString("to");
-                    String fromID = jsonObject.getString("from");
+                   to = jsonObject.getString("to");
+                    fromID = jsonObject.getString("from");
 
                     if (type.equalsIgnoreCase(kMessageType_Signal)){
+
                         if (subType.equalsIgnoreCase(kMessageSubtype_Req)){
                             /**
                              *  If request call found answer the request call
@@ -246,15 +251,17 @@ public class SignallingClient {
                              *  If voice call accepted  send the offer
                              */
 
-                            callback.onTryToStart();
+                            //callback.onTryToStart();
 
                             /// and send the offer
+                            callback.onSendTheOffer(jsonObject);
 
                         }else if (subType.equalsIgnoreCase(kMessageSubtype_Offer)){
 
                             /**
                              *  If offer found answer the offer
                              */
+
                             callback.onOfferReceived(jsonObject);
 
 
@@ -292,6 +299,79 @@ public class SignallingClient {
     }
 
 
+    public void emitIceCandidate(IceCandidate iceCandidate) {
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("candidate" , iceCandidate.sdp);
+            jsonObject.put("sdpMLineIndex" , iceCandidate.sdpMLineIndex);
+            jsonObject.put("sdpMid" , iceCandidate.sdpMid);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        JSONArray jsonArray = new JSONArray();
+        jsonArray.put(jsonObject);
+
+        try {
+            JSONObject object = new JSONObject();
+            object.put("category" , 3);
+            object.put("content" , jsonObject);
+            object.put("type", kMessageType_Signal);
+            object.put("subtype" ,kMessageSubtype_Candidate);
+            object.put("time" , "");
+            object.put("from" , to);
+            object.put("to" , fromID);
+            //object.put("sdpMLineIndex ", iceCandidate.sdpMLineIndex);
+            //object.put("sdpMid", iceCandidate.sdpMid);
+            //object.put("content ", iceCandidate.sdp);
+            socket.emit("chat message", object);
+            Log.d("JSON" , ""+object.toString());
+            Log.d("JSON" , "From:"+fromID+"to:"+to);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+    public void emitOffer(SessionDescription message  , String from , String to) {
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("category" , 3);
+            obj.put("from" , to);
+            obj.put("to" , from);
+            obj.put("time" , "");
+            obj.put("type", kMessageType_Signal);
+            obj.put("subtype" , kMessageSubtype_Offer);
+            obj.put("content", message.description);
+            socket.emit("chat message", obj);
+            Log.d("JSON" , "OFFER_SEND:"+obj.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+    public void emitOfferAnswer(SessionDescription message  , String from , String to) {
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("category" , 3);
+            obj.put("from" , to);
+            obj.put("to" , from);
+            obj.put("time" , "");
+            obj.put("type", kMessageType_Signal);
+            obj.put("subtype" , kMessageSubtype_Answer);
+            obj.put("content", message.description);
+            socket.emit("chat message", obj);
+            Log.d("JSON" , "OFFER_SEND:"+obj.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     public void onAnswerTheRequestCall(String to  , String fromid){
         Log.d("JSON" , "send ack");
@@ -325,7 +405,7 @@ public class SignallingClient {
 
         void onIceCandidateReceived(JSONObject data);
 
-        void onTryToStart();
+        //void onTryToStart();
 
         void onSendTheOffer(JSONObject jsonObject);
     }

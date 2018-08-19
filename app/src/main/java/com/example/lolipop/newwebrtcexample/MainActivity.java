@@ -1,6 +1,7 @@
 package com.example.lolipop.newwebrtcexample;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -8,6 +9,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,6 +18,8 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
@@ -30,6 +34,7 @@ import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
+import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoRenderer;
@@ -78,15 +83,13 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         SignallingClient.getInstance().init(this ,  this);
         start();
 
+        /*
         @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         audioManager.setMode(AudioManager.MODE_IN_CALL);
         audioManager.setSpeakerphoneOn(true);
 
+*/
     }
-
-
-
-
 
 
     private void initViews() {
@@ -164,9 +167,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         remoteVideoView.setMirror(true);
 
         gotUserMedia = true;
-        if (SignallingClient.getInstance().isInitiator) {
-
-        }
+        createPeerConnection();
     }
 
 
@@ -176,38 +177,113 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
     @Override
-    public void onOfferReceived(JSONObject data) {
-
-    }
-
-    @Override
     public void onAnswerReceived(JSONObject data) {
-
+        showToast("Received Answer");
+        Log.d("JSON" , ""+data.toString());
+        try {
+            localPeer.setRemoteDescription(new CustomSdpObserver(), new SessionDescription(SessionDescription.Type.fromCanonicalForm(data.getString("subtype").toLowerCase()), data.getString("content")));
+            updateVideoViews(true);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
+
+    public void onIceCandidateReceived(IceCandidate iceCandidate) {
+        //we have received ice candidate. We can set it to the other peer.
+        SignallingClient.getInstance().emitIceCandidate(iceCandidate);
+    }
+
 
     @Override
     public void onIceCandidateReceived(JSONObject data) {
+        String sdpMid = null;
+        int sdpMLineIndex = 0;
+        String candidate = null;
+        JSONObject jsonObject = null;
+
+        try {
+            jsonObject = data.getJSONObject("content");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            sdpMid = jsonObject.getString("sdpMid");
+            sdpMLineIndex = jsonObject.getInt("sdpMLineIndex");
+            candidate = jsonObject.getString("candidate");
+            Log.d("JSON_SDP" , "sdpMid:"+sdpMid +"sdpMLineIndex:"+sdpMLineIndex +"candidate:"+candidate);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        localPeer.addIceCandidate(new IceCandidate(sdpMid, sdpMLineIndex,candidate));
+    }
+
+
+    @Override
+    public void onSendTheOffer(JSONObject jsonObject) {
+        //createPeerConnection();
+        showToast("Sending the offer");
+        try {
+            String fromid = jsonObject.getString("from");
+            String to = jsonObject.getString("to");
+
+            //create sdpConstraints
+            sdpConstraints = new MediaConstraints();
+            sdpConstraints.mandatory.add(new MediaConstraints.KeyValuePair("offerToReceiveAudio", "true"));
+            sdpConstraints.mandatory.add(new MediaConstraints.KeyValuePair("offerToReceiveVideo", "true"));
+
+            localPeer.createOffer(new CustomSdpObserver() {
+                @Override
+                public void onCreateSuccess(SessionDescription sessionDescription) {
+                    super.onCreateSuccess(sessionDescription);
+                    localPeer.setLocalDescription(new CustomSdpObserver(), sessionDescription);
+                    Log.d("onCreateSuccess", "SignallingClient emit ");
+                    SignallingClient.getInstance().emitOffer(sessionDescription , fromid , to);
+                }
+            }, sdpConstraints);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
     }
 
+
     @Override
-    public void onTryToStart() {
+    public void onOfferReceived(JSONObject data) {
+        showToast("Received Offer");
+        String content = null;
+        try {
+            content = data.getString("content");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        Log.d("JSON_CONTENT" , ""+content);
         runOnUiThread(() -> {
-            if (!SignallingClient.getInstance().isStarted && localVideoTrack != null && SignallingClient.getInstance().isChannelReady) {
+            if (!SignallingClient.getInstance().isInitiator && !SignallingClient.getInstance().isStarted) {
                 createPeerConnection();
-                SignallingClient.getInstance().isStarted = true;
-                if (SignallingClient.getInstance().isInitiator) {
-                    doCall();
-                }
+            }
+
+            try {
+                localPeer.setRemoteDescription(new CustomSdpObserver(), new SessionDescription(SessionDescription.Type.OFFER, data.getString("content")));
+                doAnswer(data.getString("from") , data.getString("to"));
+                updateVideoViews(true);
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
         });
     }
 
-    @Override
-    public void onSendTheOffer(JSONObject jsonObject) {
-
+    private void doAnswer(String from , String to) {
+        localPeer.createAnswer(new CustomSdpObserver() {
+            @Override
+            public void onCreateSuccess(SessionDescription sessionDescription) {
+                super.onCreateSuccess(sessionDescription);
+                localPeer.setLocalDescription(new CustomSdpObserver(), sessionDescription);
+                SignallingClient.getInstance().emitOfferAnswer(sessionDescription , from , to);
+            }
+        }, new MediaConstraints());
     }
-
 
 
     @Override
@@ -227,7 +303,6 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     public void showToast(final String msg) {
         runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show());
     }
-
 
 
     private VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
