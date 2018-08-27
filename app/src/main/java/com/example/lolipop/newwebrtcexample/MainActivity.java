@@ -83,12 +83,12 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         SignallingClient.getInstance().init(this ,  this);
         start();
 
-        /*
+
         @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         audioManager.setMode(AudioManager.MODE_IN_CALL);
         audioManager.setSpeakerphoneOn(true);
 
-*/
+
     }
 
 
@@ -227,6 +227,13 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
             String fromid = jsonObject.getString("from");
             String to = jsonObject.getString("to");
 
+            runOnUiThread(() -> {
+                if (!SignallingClient.getInstance().isInitiator && !SignallingClient.getInstance().isStarted) {
+                    createPeerConnection();
+                }
+                    updateVideoViews(true);
+            });
+
             //create sdpConstraints
             sdpConstraints = new MediaConstraints();
             sdpConstraints.mandatory.add(new MediaConstraints.KeyValuePair("offerToReceiveAudio", "true"));
@@ -262,6 +269,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         runOnUiThread(() -> {
             if (!SignallingClient.getInstance().isInitiator && !SignallingClient.getInstance().isStarted) {
                 createPeerConnection();
+                updateVideoViews(true);
             }
 
             try {
