@@ -179,7 +179,6 @@ public class SignallingClient {
     }
 
 
-
     public void sendMessage(String userID , String fromID) {
         Log.d("JSON" , "fromID:"+fromID + " to:"+userID);
         JSONObject jsonObject3 = new JSONObject();

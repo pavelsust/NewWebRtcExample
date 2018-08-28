@@ -88,10 +88,8 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
 
 
     private void initViews() {
-
         localVideoView = findViewById(R.id.local_gl_surface_view);
         remoteVideoView = findViewById(R.id.remote_gl_surface_view);
-
     }
 
 
