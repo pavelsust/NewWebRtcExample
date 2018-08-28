@@ -16,6 +16,7 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -65,31 +66,66 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     boolean gotUserMedia;
     List<PeerConnection.IceServer> peerIceServers = new ArrayList<>();
     private static final String TAG = "MainActivity";
-
-
+    MediaStream stream;
+    VideoCapturer videoCapturerAndroid;
+    public Camera camera;
+    ImageButton imageButton;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        camera = new Camera();
 
         initViews();
         initVideos();
         getIceServers();
         SignallingClient.getInstance().init(this ,  this);
-        start();
+        initPeerCoonectionGlobally();
+        startWithFontCamera();
+        imageButton = (ImageButton) findViewById(R.id.switchCameraButton);
 
+        imageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                streamBackCamera();
+            }
+        });
+
+
+
+        /*
         @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         audioManager.setMode(AudioManager.MODE_IN_CALL);
         audioManager.setSpeakerphoneOn(true);
+        */
+
 
     }
 
 
     private void initViews() {
+
         localVideoView = findViewById(R.id.local_gl_surface_view);
         remoteVideoView = findViewById(R.id.remote_gl_surface_view);
+    }
+
+    private void initPeerCoonectionGlobally(){
+        //Initialize PeerConnectionFactory globals.
+        PeerConnectionFactory.InitializationOptions initializationOptions =
+                PeerConnectionFactory.InitializationOptions.builder(this)
+                        .setEnableVideoHwAcceleration(true)
+                        .createInitializationOptions();
+        PeerConnectionFactory.initialize(initializationOptions);
+
+        //Create a new PeerConnectionFactory instance - using Hardware encoder and decoder.
+        PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
+        DefaultVideoEncoderFactory defaultVideoEncoderFactory = new DefaultVideoEncoderFactory(
+                rootEglBase.getEglBaseContext(),  /* enableIntelVp8Encoder */true,  /* enableH264HighProfile */true);
+        DefaultVideoDecoderFactory defaultVideoDecoderFactory = new DefaultVideoDecoderFactory(rootEglBase.getEglBaseContext());
+        peerConnectionFactory = new PeerConnectionFactory(options, defaultVideoEncoderFactory, defaultVideoDecoderFactory);
+
     }
 
 
@@ -110,26 +146,11 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
 
-    public void start() {
-        //Initialize PeerConnectionFactory globals.
-        PeerConnectionFactory.InitializationOptions initializationOptions =
-                PeerConnectionFactory.InitializationOptions.builder(this)
-                        .setEnableVideoHwAcceleration(true)
-                        .createInitializationOptions();
-        PeerConnectionFactory.initialize(initializationOptions);
-
-        //Create a new PeerConnectionFactory instance - using Hardware encoder and decoder.
-        PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
-        DefaultVideoEncoderFactory defaultVideoEncoderFactory = new DefaultVideoEncoderFactory(
-                rootEglBase.getEglBaseContext(),  /* enableIntelVp8Encoder */true,  /* enableH264HighProfile */true);
-        DefaultVideoDecoderFactory defaultVideoDecoderFactory = new DefaultVideoDecoderFactory(rootEglBase.getEglBaseContext());
-        peerConnectionFactory = new PeerConnectionFactory(options, defaultVideoEncoderFactory, defaultVideoDecoderFactory);
-
+    public void startWithFontCamera() {
 
         //Now create a VideoCapturer instance.
-        VideoCapturer videoCapturerAndroid;
-        videoCapturerAndroid = createCameraCapturer(new Camera1Enumerator(false));
 
+        videoCapturerAndroid = camera.openFontCamera(new Camera1Enumerator(false));
 
         //Create MediaConstraints - Will be useful for specifying video and audio constraints.
         audioConstraints = new MediaConstraints();
@@ -163,6 +184,57 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         createPeerConnection();
     }
 
+
+
+    public void streamBackCamera() {
+
+        //Now create a VideoCapturer instance.
+        if (videoCapturerAndroid!=null){
+            try {
+                videoCapturerAndroid.stopCapture();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (localVideoTrack!=null){
+            stream.removeTrack(localVideoTrack);
+        }
+
+        localVideoTrack.removeRenderer(localRenderer);
+        videoCapturerAndroid = camera.openBackCamera(new Camera1Enumerator(false));
+
+        //Create MediaConstraints - Will be useful for specifying video and audio constraints.
+        audioConstraints = new MediaConstraints();
+        videoConstraints = new MediaConstraints();
+
+        //Create a VideoSource instance
+        if (videoCapturerAndroid != null) {
+            videoSource = peerConnectionFactory.createVideoSource(videoCapturerAndroid);
+        }
+        localVideoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+
+        //create an AudioSource instance
+        audioSource = peerConnectionFactory.createAudioSource(audioConstraints);
+        localAudioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
+
+
+        if (videoCapturerAndroid != null) {
+            videoCapturerAndroid.startCapture(1024, 720, 30);
+        }
+        localVideoView.setVisibility(View.VISIBLE);
+        //create a videoRenderer based on SurfaceViewRenderer instance
+        localRenderer = new VideoRenderer(localVideoView);
+        // And finally, with our VideoRenderer ready, we
+        // can add our renderer to the VideoTrack.
+        localVideoTrack.addRenderer(localRenderer);
+
+        localVideoView.setMirror(true);
+        remoteVideoView.setMirror(true);
+
+        gotUserMedia = true;
+        stream.addTrack(localVideoTrack);
+    }
 
     @Override
     public void onRemoteHangUp(String msg) {
@@ -306,37 +378,8 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
 
-    private VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
-        final String[] deviceNames = enumerator.getDeviceNames();
 
-        // First, try to find front facing camera
-        Logging.d(TAG, "Looking for front facing cameras.");
-        for (String deviceName : deviceNames) {
-            if (enumerator.isFrontFacing(deviceName)) {
-                Logging.d(TAG, "Creating front facing camera capturer.");
-                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
 
-                if (videoCapturer != null) {
-                    return videoCapturer;
-                }
-            }
-        }
-
-        // Front facing camera not found, try something else
-        Logging.d(TAG, "Looking for other cameras.");
-        for (String deviceName : deviceNames) {
-            if (!enumerator.isFrontFacing(deviceName)) {
-                Logging.d(TAG, "Creating other camera capturer.");
-                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
-
-                if (videoCapturer != null) {
-                    return videoCapturer;
-                }
-            }
-        }
-
-        return null;
-    }
 
     @Override
     public void onClick(View v) {
@@ -406,7 +449,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
 
     private void addStreamToLocalPeer() {
         //creating local mediastream
-        MediaStream stream = peerConnectionFactory.createLocalMediaStream("102");
+        stream = peerConnectionFactory.createLocalMediaStream("102");
         stream.addTrack(localAudioTrack);
         stream.addTrack(localVideoTrack);
         localPeer.addStream(stream);

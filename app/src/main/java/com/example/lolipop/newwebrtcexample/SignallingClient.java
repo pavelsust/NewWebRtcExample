@@ -166,7 +166,7 @@ public class SignallingClient {
                     modeList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                         @Override
                         public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                            ((MainActivity) context).start();
+                            ((MainActivity) context).startWithFontCamera();
                             sendMessage(idList.get(i) , android_id);
                             dialog.dismiss();
                         }
