@@ -70,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     VideoCapturer videoCapturerAndroid;
     public Camera camera;
     ImageButton imageButton;
+
+    public static boolean isBackCamera = true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -89,7 +91,13 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         imageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                streamBackCamera();
+                if (isBackCamera==true){
+                    streamBackCamera();
+                    isBackCamera = false;
+                }else {
+                    streamFontCamera();
+                    isBackCamera = true;
+                }
             }
         });
 
@@ -185,6 +193,55 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
 
+    public void streamFontCamera() {
+
+        //Now create a VideoCapturer instance.
+        if (videoCapturerAndroid!=null){
+            try {
+                videoCapturerAndroid.stopCapture();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (localVideoTrack!=null){
+            stream.removeTrack(localVideoTrack);
+        }
+
+        localVideoTrack.removeRenderer(localRenderer);
+        videoCapturerAndroid = camera.openFontCamera(new Camera1Enumerator(false));
+
+        //Create MediaConstraints - Will be useful for specifying video and audio constraints.
+        audioConstraints = new MediaConstraints();
+        videoConstraints = new MediaConstraints();
+
+        //Create a VideoSource instance
+        if (videoCapturerAndroid != null) {
+            videoSource = peerConnectionFactory.createVideoSource(videoCapturerAndroid);
+        }
+        localVideoTrack = peerConnectionFactory.createVideoTrack("100", videoSource);
+
+        //create an AudioSource instance
+        audioSource = peerConnectionFactory.createAudioSource(audioConstraints);
+        localAudioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
+
+
+        if (videoCapturerAndroid != null) {
+            videoCapturerAndroid.startCapture(1024, 720, 30);
+        }
+        localVideoView.setVisibility(View.VISIBLE);
+        //create a videoRenderer based on SurfaceViewRenderer instance
+        localRenderer = new VideoRenderer(localVideoView);
+        // And finally, with our VideoRenderer ready, we
+        // can add our renderer to the VideoTrack.
+        localVideoTrack.addRenderer(localRenderer);
+
+        localVideoView.setMirror(true);
+        remoteVideoView.setMirror(true);
+
+        gotUserMedia = true;
+        stream.addTrack(localVideoTrack);
+    }
 
     public void streamBackCamera() {
 
