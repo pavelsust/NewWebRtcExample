@@ -179,6 +179,7 @@ public class SignallingClient {
     }
 
 
+
     public void sendMessage(String userID , String fromID) {
         Log.d("JSON" , "fromID:"+fromID + " to:"+userID);
         JSONObject jsonObject3 = new JSONObject();
@@ -230,10 +231,9 @@ public class SignallingClient {
             socket.on("chat message" , args -> {
                 JSONObject jsonObject = (JSONObject) args[0];
                 try {
-
                     String type = jsonObject.getString("type");
                     String subType = jsonObject.getString("subtype");
-                   to = jsonObject.getString("to");
+                    to = jsonObject.getString("to");
                     fromID = jsonObject.getString("from");
 
                     if (type.equalsIgnoreCase(kMessageType_Signal)){
@@ -275,20 +275,42 @@ public class SignallingClient {
                         } else if (subType.equalsIgnoreCase(kMessageSubtype_Candidate)){
                             callback.onIceCandidateReceived(jsonObject);
                         }
+                        else if (subType.equalsIgnoreCase(kMessageSubtype_Close)){
+                            /**
+                             * call end call
+                             */
+                            callback.callEnd();
+                        }
                     }
-
 
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
             });
 
-
-
-
         }catch (Exception e){
             e.printStackTrace();
         }
+    }
+
+
+    public void sendCallEndMessage(){
+
+        JSONObject jsonObject3 = new JSONObject();
+        try{
+            jsonObject3.put("category" , 3);
+            jsonObject3.put( "content","Incoming call answered.");
+            jsonObject3.put("from" , to);
+            jsonObject3.put("time", "");
+            jsonObject3.put("to" , fromID);
+            jsonObject3.put("type" , kMessageType_Signal);
+            jsonObject3.put("subtype", kMessageSubtype_Close);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        Log.d("JSON_MESSAGE" , ""+jsonObject3.toString());
+        socket.emit("chat message", jsonObject3);
     }
 
     public void close() {
@@ -406,6 +428,7 @@ public class SignallingClient {
 
         //void onTryToStart();
 
+        void callEnd();
         void onSendTheOffer(JSONObject jsonObject);
     }
 }

@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     VideoCapturer videoCapturerAndroid;
     public Camera camera;
     ImageButton imageButton;
+    ImageButton callEnd;
 
     public static boolean isBackCamera = true;
     @Override
@@ -77,6 +78,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        callEnd = (ImageButton) findViewById(R.id.disconnectButton);
         setSupportActionBar(toolbar);
         camera = new Camera();
 
@@ -98,6 +100,14 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
                     streamFontCamera();
                     isBackCamera = true;
                 }
+            }
+        });
+
+        callEnd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SignallingClient.getInstance().sendCallEndMessage();
+                hangup();
             }
         });
 
@@ -133,7 +143,6 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
                 rootEglBase.getEglBaseContext(),  /* enableIntelVp8Encoder */true,  /* enableH264HighProfile */true);
         DefaultVideoDecoderFactory defaultVideoDecoderFactory = new DefaultVideoDecoderFactory(rootEglBase.getEglBaseContext());
         peerConnectionFactory = new PeerConnectionFactory(options, defaultVideoEncoderFactory, defaultVideoDecoderFactory);
-
     }
 
 
@@ -178,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         if (videoCapturerAndroid != null) {
             videoCapturerAndroid.startCapture(1024, 720, 30);
         }
+
         localVideoView.setVisibility(View.VISIBLE);
         //create a videoRenderer based on SurfaceViewRenderer instance
         localRenderer = new VideoRenderer(localVideoView);
@@ -340,6 +350,12 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         localPeer.addIceCandidate(new IceCandidate(sdpMid, sdpMLineIndex,candidate));
     }
 
+    @Override
+    public void callEnd() {
+        showToast("Call End");
+        hangup();
+    }
+
 
     @Override
     public void onSendTheOffer(JSONObject jsonObject) {
@@ -443,11 +459,13 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
     private void hangup() {
+
         try {
             localPeer.close();
             localPeer = null;
-            SignallingClient.getInstance().close();
+            //SignallingClient.getInstance().close();
             updateVideoViews(false);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
