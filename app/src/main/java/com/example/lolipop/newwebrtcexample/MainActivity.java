@@ -60,14 +60,11 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     VideoRenderer localRenderer;
     VideoRenderer remoteRenderer;
 
-    Button hangup;
     PeerConnection localPeer;
     EglBase rootEglBase;
     boolean gotUserMedia;
     List<PeerConnection.IceServer> peerIceServers = new ArrayList<>();
     private static final String TAG = "MainActivity";
-
-
 
 
     @Override
@@ -83,20 +80,18 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         SignallingClient.getInstance().init(this ,  this);
         start();
 
-
         @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         audioManager.setMode(AudioManager.MODE_IN_CALL);
         audioManager.setSpeakerphoneOn(true);
-
 
     }
 
 
     private void initViews() {
-        hangup = findViewById(R.id.end_call);
+
         localVideoView = findViewById(R.id.local_gl_surface_view);
         remoteVideoView = findViewById(R.id.remote_gl_surface_view);
-        hangup.setOnClickListener(this);
+
     }
 
 
@@ -231,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
                 if (!SignallingClient.getInstance().isInitiator && !SignallingClient.getInstance().isStarted) {
                     createPeerConnection();
                 }
-                    updateVideoViews(true);
+                updateVideoViews(true);
             });
 
             //create sdpConstraints
@@ -347,12 +342,6 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.end_call: {
-                hangup();
-                break;
-            }
-        }
     }
 
     private void hangup() {

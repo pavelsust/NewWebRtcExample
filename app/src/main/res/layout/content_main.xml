@@ -36,22 +36,63 @@
                 android:layout_gravity="bottom|end"
                 android:layout_height="match_parent" />
 
-
-
         </FrameLayout>
 
+
         <LinearLayout
+            android:id="@+id/buttonPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="horizontal">
-            <Button
+            android:layout_gravity="center|bottom"
+            android:layout_marginBottom="@dimen/margin_medium"
+            android:gravity="center"
+            android:visibility="visible">
+
+            <ImageButton
+                android:id="@+id/switchCameraButton"
                 android:layout_width="wrap_content"
-                android:layout_margin="5dp"
                 android:layout_height="wrap_content"
-                android:id="@+id/end_call"
-                android:text="Hangup" />
+                android:background="?attr/selectableItemBackground"
+                android:contentDescription="@string/desc_switch_camera"
+                android:padding="@dimen/margin_medium"
+                app:srcCompat="@drawable/ic_switch_video_white_24dp"
+                tools:ignore="VectorDrawableCompat" />
+
+            <ToggleButton
+                android:id="@+id/microphoneEnabledToggle"
+                style="@style/ToggleButtonBorderlessTextless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/margin_small"
+                android:button="@drawable/ic_microphone_toggle"
+                android:contentDescription="@string/desc_toggle_microphone"
+                android:minHeight="@dimen/toggle_button_min_size"
+                android:minWidth="@dimen/toggle_button_min_size"/>
+
+            <ImageButton
+                android:id="@+id/disconnectButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/margin_small"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@string/desc_hangup"
+                android:src="@drawable/call_end_button"/>
+
+            <ToggleButton
+                android:id="@+id/cameraEnabledToggle"
+                style="@style/ToggleButtonBorderlessTextless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/margin_small"
+                android:button="@drawable/ic_videocam_on_off_toggle"
+                android:contentDescription="@string/desc_toggle_camera"
+                android:minHeight="@dimen/toggle_button_min_size"
+                android:minWidth="@dimen/toggle_button_min_size"/>
         </LinearLayout>
+
     </FrameLayout>
+
+
+
 
 </android.support.constraint.ConstraintLayout>
