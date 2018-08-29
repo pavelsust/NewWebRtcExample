@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -71,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     public Camera camera;
     ImageButton imageButton;
     ImageButton callEnd;
+    ToggleButton micOnoff;
+    ToggleButton cameraOnOff;
+    ToggleButton loudSpeakerOnOff;
 
     public static boolean isBackCamera = true;
     @Override
@@ -79,6 +83,10 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         callEnd = (ImageButton) findViewById(R.id.disconnectButton);
+        micOnoff = (ToggleButton) findViewById(R.id.microphoneEnabledToggle);
+        cameraOnOff = (ToggleButton) findViewById(R.id.cameraEnabledToggle);
+        loudSpeakerOnOff = (ToggleButton) findViewById(R.id.loudSpeakerOnoff);
+
         setSupportActionBar(toolbar);
         camera = new Camera();
 
@@ -111,13 +119,27 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
             }
         });
 
+        micOnoff.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleclick();
+            }
+        });
 
+        cameraOnOff.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cameraOnOff();
+            }
+        });
 
-        /*
-        @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
-        audioManager.setMode(AudioManager.MODE_IN_CALL);
-        audioManager.setSpeakerphoneOn(true);
-        */
+        loudSpeakerOnOff.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setLoudSpeakerOnOff();
+            }
+        });
+
 
 
     }
@@ -155,12 +177,13 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
     }
 
     private void getIceServers() {
-        PeerConnection.IceServer peerIceServer = PeerConnection.IceServer.builder("turn:139.59.248.179:3478")
+        PeerConnection.IceServer peerIceServer = PeerConnection.IceServer.builder("turn:coturn.jigglemed.com")
                 .setUsername("tashfin")
                 .setPassword("turn2s3rv3r")
                 .createIceServer();
         peerIceServers.add(peerIceServer);
     }
+
 
 
     public void startWithFontCamera() {
@@ -301,6 +324,45 @@ public class MainActivity extends AppCompatActivity implements SignallingClient.
 
         gotUserMedia = true;
         stream.addTrack(localVideoTrack);
+    }
+
+
+
+    public void toggleclick(){
+
+        if(micOnoff.isChecked()){
+            stream.removeTrack(localAudioTrack);
+            Toast.makeText(this, "Mic off", Toast.LENGTH_SHORT).show();
+        }else {
+            stream.addTrack(localAudioTrack);
+            Toast.makeText(this, "Mic on", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    public void cameraOnOff(){
+
+        if(cameraOnOff.isChecked()){
+            stream.removeTrack(localVideoTrack);
+            Toast.makeText(this, "Video off", Toast.LENGTH_SHORT).show();
+        }else {
+            stream.addTrack(localVideoTrack);
+            Toast.makeText(this, "Video on", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void setLoudSpeakerOnOff(){
+
+        @SuppressLint({"NewApi", "LocalSuppress"}) AudioManager audioManager = (AudioManager)getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+        //audioManager.setMode(AudioManager.MODE_IN_CALL);
+        //audioManager.setSpeakerphoneOn(false);
+        if (loudSpeakerOnOff.isChecked()){
+            audioManager.setMode(AudioManager.MODE_NORMAL);
+            audioManager.setSpeakerphoneOn(true);
+        }else {
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.setSpeakerphoneOn(false);
+        }
     }
 
     @Override

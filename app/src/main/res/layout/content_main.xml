@@ -88,6 +88,19 @@
                 android:contentDescription="@string/desc_toggle_camera"
                 android:minHeight="@dimen/toggle_button_min_size"
                 android:minWidth="@dimen/toggle_button_min_size"/>
+
+            <ToggleButton
+                android:id="@+id/loudSpeakerOnoff"
+                style="@style/ToggleButtonBorderlessTextless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/margin_small"
+                android:button="@drawable/ic_volume_on_off"
+                android:contentDescription="@string/desc_toggle_camera"
+                android:minHeight="@dimen/toggle_button_min_size"
+                android:minWidth="@dimen/toggle_button_min_size"/>
+
+
         </LinearLayout>
 
     </FrameLayout>
