@@ -12,7 +12,6 @@ public class Camera {
 
     }
 
-
     public VideoCapturer openBackCamera(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
 

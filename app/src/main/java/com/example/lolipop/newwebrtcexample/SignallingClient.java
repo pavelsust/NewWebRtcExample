@@ -3,7 +3,6 @@ package com.example.lolipop.newwebrtcexample;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.bluetooth.BluetoothClass;
 import android.content.Context;
 import android.os.Build;
 import android.provider.Settings;
@@ -86,28 +85,20 @@ public class SignallingClient {
         return instance;
     }
 
-
-
     private Emitter.Listener onConnect = new Emitter.Listener() {
-
         JSONObject registerInfo = new JSONObject();
-
-
         @Override
         public void call(Object... args) {
-            String android_id = Settings.Secure.getString(context.getContentResolver(),
-                    Settings.Secure.ANDROID_ID);
             try {
-                registerInfo.put("name" , getDeviceName());
-                registerInfo.put("id" , ""+android_id);
+                registerInfo.put("name" , MainActivity.USER_NAME);
+                registerInfo.put("id" , MainActivity.USER_ID);
                 registerInfo.put("specialty" , "special");
-
             } catch (JSONException e) {
                 e.printStackTrace();
             }
 
             socket.emit("register", registerInfo);
-            getUserList();
+            //getUserList();
 
         }
     };
@@ -118,7 +109,7 @@ public class SignallingClient {
         String android_id = Settings.Secure.getString(context.getContentResolver(),
                 Settings.Secure.ANDROID_ID);
         socket.emit("list users", new String[0], args -> {
-            ((MainActivity) context).runOnUiThread(new Runnable() {
+            ((CallActivity) context).runOnUiThread(new Runnable() {
                 public void run() {
                     List<String> nameList = new ArrayList<String>();
                     List<String> idList = new ArrayList<String>();
@@ -166,7 +157,7 @@ public class SignallingClient {
                     modeList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                         @Override
                         public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                            ((MainActivity) context).startWithFontCamera();
+                            ((CallActivity) context).startWithFontCamera();
                             sendMessage(idList.get(i) , android_id);
                             dialog.dismiss();
                         }
@@ -177,7 +168,6 @@ public class SignallingClient {
         });
 
     }
-
 
 
     public void sendMessage(String userID , String fromID) {
@@ -199,6 +189,9 @@ public class SignallingClient {
         socket.emit("chat message", jsonObject3);
 
     }
+
+
+
 
 
 
