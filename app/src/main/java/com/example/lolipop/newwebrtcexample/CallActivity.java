@@ -176,9 +176,9 @@ public class CallActivity extends AppCompatActivity implements SignallingClient.
     }
 
     private void getIceServers() {
-        PeerConnection.IceServer peerIceServer = PeerConnection.IceServer.builder("turn:coturn.jigglemed.com")
-                .setUsername("tashfin")
-                .setPassword("turn2s3rv3r")
+        PeerConnection.IceServer peerIceServer = PeerConnection.IceServer.builder("turn.server")
+                .setUsername("")
+                .setPassword("")
                 .createIceServer();
         peerIceServers.add(peerIceServer);
     }
